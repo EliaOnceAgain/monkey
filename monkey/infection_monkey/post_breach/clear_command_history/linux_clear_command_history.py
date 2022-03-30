@@ -1,6 +1,11 @@
+import logging
 import subprocess
 
+from common.common_consts.post_breach_consts import POST_BREACH_CLEAR_CMD_HISTORY
+from common.common_consts.timeouts import LONG_REQUEST_TIMEOUT
 from infection_monkey.utils.environment import is_windows_os
+
+logger = logging.getLogger(__name__)
 
 
 def get_linux_commands_to_clear_command_history():
@@ -46,12 +51,21 @@ def get_linux_usernames():
         return []
 
     # get list of usernames
-    USERS = (
-        subprocess.check_output(  # noqa: DUO116
-            "cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1", shell=True
+    try:
+        USERS = (
+            subprocess.check_output(  # noqa: DUO116
+                "cut -d: -f1,3 /etc/passwd | egrep ':[0-9]{4}$' | cut -d: -f1",
+                shell=True,
+                timeout=LONG_REQUEST_TIMEOUT,
+            )
+            .decode()
+            .split("\n")[:-1]
         )
-        .decode()
-        .split("\n")[:-1]
-    )
 
-    return USERS
+        return USERS
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as err:
+        logger.error(
+            f"An exception occured on fetching linux usernames,"
+            f"PBA: {POST_BREACH_CLEAR_CMD_HISTORY}: {str(err)}"
+        )
+        return []

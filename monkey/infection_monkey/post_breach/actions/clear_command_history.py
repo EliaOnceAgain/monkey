@@ -2,6 +2,7 @@ import subprocess
 from typing import Dict
 
 from common.common_consts.post_breach_consts import POST_BREACH_CLEAR_CMD_HISTORY
+from common.common_consts.timeouts import LONG_REQUEST_TIMEOUT
 from infection_monkey.i_puppet.i_puppet import PostBreachData
 from infection_monkey.post_breach.clear_command_history.clear_command_history import (
     get_commands_to_clear_command_history,
@@ -56,9 +57,14 @@ class ClearCommandHistory(PBA):
                 if self.command:
                     try:
                         output = subprocess.check_output(  # noqa: DUO116
-                            self.command, stderr=subprocess.STDOUT, shell=True
+                            self.command,
+                            stderr=subprocess.STDOUT,
+                            shell=True,
+                            timeout=LONG_REQUEST_TIMEOUT,
                         ).decode()
                         return output, True
-                    except subprocess.CalledProcessError as e:
+                    except subprocess.CalledProcessError as err:
                         # Return error output of the command
-                        return e.output.decode(), False
+                        return err.output.decode(), False
+                    except subprocess.TimeoutExpired as err:
+                        return err, False
